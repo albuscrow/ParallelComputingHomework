@@ -16,6 +16,13 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <string.h>
+
+/** 
+ * int to bytearray
+ *
+ * @param input 
+ * @param output 
+ */
 void intToByteArray(unsigned int input,unsigned char* output){
   output[0] = (unsigned char)input;
   output[1] = (unsigned char)(input>>8);
@@ -23,6 +30,15 @@ void intToByteArray(unsigned int input,unsigned char* output){
   output[3] = (unsigned char)(input>>24);
 }
 
+
+/** 
+ * cmp for qsort()
+ *
+ * @param ele1 
+ * @param ele2 
+ *
+ * @return 
+ */
 int cmp(const void *ele1, const void *ele2){
   unsigned int e1 = *(unsigned int *)ele1;
   unsigned int e2 = *(unsigned int *)ele2;
@@ -35,20 +51,32 @@ int cmp(const void *ele1, const void *ele2){
   }
 }
 
+/** 
+ * bytearray to int
+ *
+ * @param output 
+ *
+ * @return 
+ */
 unsigned int byteArrayToInt(unsigned char* output){
   return (unsigned int)(output[0] | (output[1] << 8) | (output[2] << 16) | (output[3] << 24));
 }
 
 int main(int argc, char *argv[]){
-  /* the num of element which will be sorted */
+  /* the num of child threads which will be sorted */
   int threadNum = atoi(argv[1]);
   int *pipeIds = (int*) malloc(2*(threadNum+1)*sizeof(int));
+
+  /* create enough pipes */
   for(unsigned int i = 0; i < threadNum+1; ++i){
     if(pipe(&pipeIds[2*i]) < 0){
       printf("pipe create error\n");
       exit(-1);
     }
   }
+
+  /* create enough child thread 
+     the index can be used to identity thread*/
   unsigned int index;
   for(index = 0; index < threadNum; ++index){
     int pid = fork();
@@ -59,12 +87,20 @@ int main(int argc, char *argv[]){
       break;
     }
   }
+
+  /*close some pipes */
   close(pipeIds[index*2+1]);
   close(pipeIds[(index+1)*2%22]);
 
+  /* compute the number of elements which will be sended in the same time */
   unsigned int eleNum = atoi(argv[2]);
   unsigned int capatity = eleNum/threadNum + 1;
+
+
   if(index == 0u){
+    /* it is in the orig thread */
+
+    /* read the data from file */
     FILE *fp;
     fp = fopen(argv[3], "r");
     if(fp == NULL){
@@ -76,9 +112,10 @@ int main(int argc, char *argv[]){
     for(unsigned int i = 0; i < eleNum; ++i){
       fscanf(fp, "%u", eles+i);
     }
+
+    /* send data to next thread */
     unsigned char ele_byteArray[4];
     unsigned char *buffer =(unsigned char *) malloc(capatity*4*sizeof(unsigned char));
-    //printf("%u %u",threadNum, capatity);
     for(unsigned int i_e = 0; i_e < threadNum; ++i_e){
       for(unsigned int i = 0; i < capatity; ++i){
 	intToByteArray(eles[capatity*i_e + i],ele_byteArray);
@@ -87,6 +124,7 @@ int main(int argc, char *argv[]){
       write(pipeIds[3], buffer, 4*capatity);
     }
 
+    /* read sorted data and printed them */
     printf("sorted array is:\n");
     for(unsigned int i = 0; i < threadNum; ++i){
       read(pipeIds[0], buffer, 4*capatity);
@@ -98,13 +136,18 @@ int main(int argc, char *argv[]){
     free(buffer);
     free(eles);
   }else{
+    /* it is in child thread */
+
+    /* reveive first data package,sort,then store in eles */
     unsigned char *buffer = (unsigned char *)malloc(capatity*4*sizeof(unsigned char));
     read(pipeIds[index*2],buffer,4*capatity);
     unsigned int *eles = (unsigned int *) malloc(capatity*sizeof(unsigned int));
     for(unsigned int i = 0; i < capatity; ++i){
       eles[i] = byteArrayToInt(buffer + 4*i);
     }
-    qsort(eles, capatity ,sizeof(unsigned int),cmp);	
+    qsort(eles, capatity ,sizeof(unsigned int),cmp);
+
+    /* reveive data (threadNum-index) times, then compare with eles,then send the smaller ones to next */
     unsigned int *eles_readed = (unsigned int *) malloc(capatity*sizeof(unsigned int));
     unsigned int *eles_temp =  (unsigned int *) malloc(capatity*sizeof(unsigned int)*2);
     for(unsigned int i_i = index; i_i < threadNum; ++i_i){
@@ -121,6 +164,8 @@ int main(int argc, char *argv[]){
       }
       write(pipeIds[index*2+3], buffer, 4*capatity);
     }
+
+    /* this will run after data is sorted, and the code will send sorted data to orig thread */
     for(unsigned int i = 1; i < index; ++i){
       read(pipeIds[index*2],buffer,4*capatity);
       write(pipeIds[(index*2+3)%(2*threadNum+2)], buffer, 4*capatity);
