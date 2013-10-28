@@ -92,5 +92,6 @@ int main(int argc, char *argv[]){
     intToByteArray(ele, ele_byteArray);
     write(pipeIds[(index*2+3)%(2*num+2)], ele_byteArray, 4);
   }
+  free(pipeIds);
   return 0;
 }
