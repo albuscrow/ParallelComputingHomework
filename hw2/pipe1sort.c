@@ -14,14 +14,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
-void intToByteArray(int input, char* output){
-  output[0] = (char)input;
-  output[1] = (char)input>>8;
-  output[2] = (char)input>>16;
-  output[3] = (char)input>>24;
+void intToByteArray(unsigned int input,unsigned char* output){
+  output[0] = (unsigned char)input;
+  output[1] = (unsigned char)input>>8;
+  output[2] = (unsigned char)input>>16;
+  output[3] = (unsigned char)input>>24;
 }
 
-unsigned int byteArrayToInt(char* output){
+unsigned int byteArrayToInt(unsigned char* output){
   return (unsigned int)(output[0] | (output[1] << 8) | (output[2] << 16) | (output[3] << 24));
 }
 
@@ -37,8 +37,6 @@ int main(int argc, char *argv[]){
   }
   unsigned int index;
   for(index = 0; index < num; ++index){
-    //printf("%d\n", index);
-
     int pid = fork();
     if(pid < 0){
       printf("fork failed\n");
@@ -50,7 +48,6 @@ int main(int argc, char *argv[]){
   close(pipeIds[index*2+1]);
   close(pipeIds[(index+1)*2%22]);
   if(index == 0u){
-    //printf("begin main thread\n");
     FILE *fp;
     fp = fopen(argv[2], "r");
     if(fp == NULL){
@@ -58,20 +55,15 @@ int main(int argc, char *argv[]){
       exit(1);
     }
     unsigned int ele;
-    char ele_byteArray[4];
+    unsigned char ele_byteArray[4];
     for(unsigned int i_e = 0; i_e < num; ++i_e){
       fscanf(fp,"%u",&ele);
-
-      //debug output
-      //printf("%u:%u\n", i_e, ele);
-
       intToByteArray(ele,ele_byteArray);
       write(pipeIds[3], ele_byteArray, 4);
     }
     printf("sorted array is:");
   }else{
-    //printf("begin child thread %u\n",index);
-    char ele_byteArray[4];
+    unsigned char ele_byteArray[4];
     read(pipeIds[index*2],ele_byteArray,4);
     unsigned int ele;
     ele = byteArrayToInt(ele_byteArray);
