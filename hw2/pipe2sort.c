@@ -1,7 +1,7 @@
 /**
- * @file   pipe1sort.c
+ * @file   pipe2sort.c
  * @author Zheqi Lu <albuscrow@gmail.com>
- * @date   Fri Oct 25 17:47:08 2013
+ * @date   Mon Oct 28 14:50:47 2013
  * 
  * @brief  nothing to say, let's begin!
  * 
@@ -62,12 +62,6 @@ int main(int argc, char *argv[]){
       write(pipeIds[3], ele_byteArray, 4);
     }
     printf("sorted array is:");
-    for(unsigned int i = 0; i < num; ++i){
-      read(pipeIds[0], ele_byteArray, 4);
-      ele = byteArrayToInt(ele_byteArray);
-      printf("%u ", ele);
-    }
-    printf("\n");
   }else{
     unsigned char ele_byteArray[4];
     read(pipeIds[index*2],ele_byteArray,4);
@@ -85,12 +79,7 @@ int main(int argc, char *argv[]){
       intToByteArray(ele_readed, ele_byteArray);
       write(pipeIds[index*2+3], ele_byteArray, 4);
     }
-    for(unsigned int i = 1; i < index; ++i){
-      read(pipeIds[index*2],ele_byteArray,4);
-      write(pipeIds[(index*2+3)%(2*num+2)], ele_byteArray, 4);
-    }
-    intToByteArray(ele, ele_byteArray);
-    write(pipeIds[(index*2+3)%(2*num+2)], ele_byteArray, 4);
+    printf("%u ", ele);
   }
   return 0;
 }
